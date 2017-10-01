@@ -12,7 +12,7 @@ import (
 	"text/tabwriter"
 	"time"
 )
-
+const perPage = 25
 var (
 	user = os.Getenv("SELECTEL_USER")
 	key  = os.Getenv("SELECTEL_PASS")
@@ -28,7 +28,7 @@ type File struct {
 	IsFile   bool
 }
 
-func (p *File) Find(name string,object storage.ObjectInfo) *File {
+func (p *File) Find(name string, object storage.ObjectInfo) *File {
 	for _, ptn := range p.Files {
 		if ptn.Name == name {
 			return ptn
@@ -62,7 +62,7 @@ func (p *File) Select() *File {
 		return nil
 	}
 	FileTable(p.Files)
-	return p.Files[unswer(len(p.Files),"Select object: ")]
+	return p.Files[unswer(len(p.Files), "Select object: ")]
 }
 
 var bucket *File = &File{
@@ -81,7 +81,7 @@ func main() {
 		log.Fatal(err)
 	}
 	ContainerTable(containers)
-	container := api.Container(containers[unswer(len(containers),"Select container: ")].Name)
+	container := api.Container(containers[unswer(len(containers), "Select container: ")].Name)
 	objects, err := container.ObjectsInfo()
 	if err != nil {
 		log.Fatal(err)
@@ -90,7 +90,7 @@ func main() {
 		paths := strings.Split(object.Name, "/")
 		current := bucket
 		for index, p := range paths {
-			current = current.Find(p,object)
+			current = current.Find(p, object)
 			if len(paths) == index+1 {
 				current.IsFile = true
 			}
@@ -112,7 +112,7 @@ func main() {
 	}
 	fmt.Println("Success!")
 }
-func unswer(max int,caption string) int {
+func unswer(max int, caption string) int {
 	fmt.Print(caption)
 	scanner := bufio.NewScanner(os.Stdin)
 	scanner.Scan()
@@ -120,7 +120,7 @@ func unswer(max int,caption string) int {
 	code, err := strconv.Atoi(text)
 	if err != nil || code > max || code < 0 {
 		fmt.Println("Wrong input, try again")
-		return unswer(max,caption)
+		return unswer(max, caption)
 	}
 	return code - 1
 }
@@ -136,10 +136,15 @@ func FileTable(files []*File) {
 	fmt.Println()
 	fmt.Fprintf(table, format, "#", "Filename", "Size", "Modified", "Type")
 	fmt.Fprintf(table, format, "-", "--------", "----", "--------", "----")
-	for index, file := range files {
-		fmt.Fprintf(table, format, index+1, file.Name, file.Size, file.Modified, file.Type)
-	}
+	for index := 0; index < len(files); index++ {
+			file := files[index]
+			fmt.Fprintf(table, format, index+1, file.Name, file.Size, file.Modified, file.Type)
 
+		if (index+1)%perPage == 0{
+			table.Flush()
+			stringUnswer("Show next objects...")
+		}
+	}
 	table.Flush()
 	fmt.Println()
 }
@@ -152,7 +157,6 @@ func ContainerTable(containers []storage.ContainerInfo) {
 	for index, container := range containers {
 		fmt.Fprintf(table, format, index+1, container.Name, container.Type, container.ObjectCount, container.BytesUsed)
 	}
-
 	table.Flush()
 	fmt.Println()
 }
